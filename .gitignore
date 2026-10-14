@@ -1,0 +1,6 @@
+.env
+node_modules/
+*.jsonl
+test/out/
+.DS_Store
+__pycache__/
