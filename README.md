@@ -7,6 +7,7 @@ the compute-unit (CU) cost before you spend any.
 From [Predge](https://predge.io). It uses the query pattern of the indexer we run every night on
 Alchemy's Free plan, rewritten as a small standalone script. The run figures below come from that
 indexer's own run logs; where a number comes from somewhere else, the text says so.
+A short write-up of the same numbers is in [CASE-STUDY.md](CASE-STUDY.md).
 
 ## Quick start
 
@@ -84,43 +85,46 @@ whatever the length of the range.
 
 5,699 Robinhood Chain wallets, two queries each, 4 workers, one run a night. Every figure here comes from
 the job's run log, one line per run (end time, exit code, seconds, CU), and the per-run log it points to.
-Twelve full runs, 2 to 13 October 2026; the first was started by hand, the other eleven by the scheduler
-at 01:00 UTC:
+Sixteen runs, 2 to 17 October 2026: fifteen full runs, plus one short resume run on 14 October that
+finished a single wallet left over from the night before. The first full run was started by hand, the
+others by the scheduler at 01:00 UTC:
 
-| | per run, 12 runs |
+| | per full run, 15 runs |
 |---|---|
 | wallets | 5,699 every run |
-| blocks covered | 835,215 to 851,925 for the ten 24-hour windows (4 to 13 Oct); 1,517,216 on the first run |
+| blocks covered | 835,215 to 857,092 for the twelve 24-hour windows; 1,517,216 on the first run; 1,701,746 on 15 Oct (two days, after the resume night) |
 | calls | 11,400 to 11,409 |
-| CU | 1,367,790 to 1,368,870, mean **1,368,030** (spread 0.08%) |
+| CU | 1,367,790 to 1,368,870, mean **1,368,078** (spread 0.08%) |
 | CU per wallet | 240.0 to 240.2 |
-| wall-clock | 61.9 to 72.3 min, mean **65.8 min** |
-| wallets that failed | 1 of 68,388 wallet refreshes (13 Oct, gave up after 10 retries); finished the next night for 240 CU |
+| wall-clock | 61.9 to 72.3 min, mean **65.4 min** |
+| wallets that failed | 1 of 85,485 wallet refreshes (13 Oct, gave up after 10 retries); finished the next night for 240 CU |
 
 CU is the job's own count at the published prices; it is not reconciled with the Alchemy dashboard. Each
 run's CU is 120 x (Transfers calls) + 30 for two head lookups, e.g. 1,367,790 = 11,398 x 120 + 30.
+All sixteen runs together logged 20,521,410 CU.
 
 What the numbers say:
 
 - **You pay per wallet, not per block.** The first run covered 1.8 times as many blocks as a normal
-  night and cost 0.06% more. It holds for wallets under 1,000 transfers a run; the index leaves out five
+  night and cost 0.06% more than the mean; the two-day window on 15 October covered 2.0 times as many
+  and cost 0.05% more. It holds for wallets under 1,000 transfers a run; the index leaves out five
   router-size addresses, each with over 1.5M transfers.
-- **Extra pages are rare for daily windows.** About 25 pages beyond the first in 136,776 queries over the
-  12 runs (0.02%); most nights needed 0 to 3. An older 8.8-day catch-up of the same job needed 1.5%, so long
-  windows cost a little more.
+- **Extra pages are rare for daily windows.** 36 pages beyond the first in 170,970 queries over the
+  15 full runs (0.02%); most nights needed 0 to 3, the two long windows 8 and 9. An older 8.8-day catch-up
+  of the same job needed 1.5%, so long windows cost a little more.
 - **The estimator.** `--dry-run` on a 5,699-address file with its default 2% allowance for extra pages
-  prints 1,395,130 CU, 2.0% above the measured mean. With `--extra-page-share 0.000175` (the measured
-  share, so fitted on the same data) it prints 1,368,010.
+  prints 1,395,130 CU, 2.0% above the measured mean. With `--extra-page-share 0.00021` (the measured
+  share, so fitted on the same data) it prints 1,368,130.
 - **The Free plan (30M CU a month).** At 240 CU per wallet per day: 1,000 wallets use 7.2M a month (24%),
   2,000 use 14.4M (48%), 4,000 use 28.8M (96%). Our 5,699 wallets would use 41.0M over 30 daily runs,
-  which is 137%. Our job stops itself for the month at 27M CU by its own count; in October 2026 that is projected
-  to happen after the run of 22 October (20 full runs).
+  which is 137%. Our job stops itself for the month at 27M CU by its own count; in October 2026 that is
+  projected to happen after the run of 22 October (20 full runs).
 - **Throughput.** 11,400 calls in 62 to 72 minutes is 2.6 to 3.1 calls a second, or 315 to 368 CU a
   second sustained with 4 workers. The pricing page lists 500 CU/s for Free. Our job does not count its
   rate-limit retries, so we cannot say how much of that time was throttling.
 - **Quiet wallets cost the same.** Between 35% and 71% of the 5,699 wallets had no transfers in a run's
-  window (57% across the 12 runs), and each still cost 240 CU. (Counted from the index database, not the
-  log.)
+  window (59% across the 15 full runs), and each still cost 240 CU. (Counted from the index database, not
+  the log.)
 
 ### Whole-chain scans
 
@@ -153,7 +157,7 @@ with this repo. Last full run, 2026-10-14 21:10 UTC, Free plan, 1,930 CU in tota
 
 ## Limitations on Robinhood Chain today
 
-All observed live on the Free plan on 2026-10-03 and again on 2026-10-14, with the same error messages. The live test asserts the first one, so it fails when
+All observed live on the Free plan on 2026-10-03 and again on 2026-10-14, with the same error messages; the first one was checked once more on 2026-10-17. The live test asserts the first one, so it fails when
 Alchemy adds the `internal` category for this chain; it only records the others.
 
 1. **No internal transfers in `alchemy_getAssetTransfers`.** With `category: ["internal"]` it answers
